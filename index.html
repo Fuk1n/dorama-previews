@@ -14,17 +14,92 @@
             margin: 0;
             padding: 15px;
         }
+
+        /* Контейнер для поиска и кнопки фильтра */
+        .search-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+            align-items: center;
+        }
+
         .search-box {
-            width: 100%;
+            flex-grow: 1;
             padding: 12px;
             border-radius: 10px;
             border: 1px solid var(--tg-theme-hint-color, #555);
             background: var(--tg-theme-secondary-bg-color, #242424);
             color: #fff;
             box-sizing: border-box;
-            margin-bottom: 20px;
             font-size: 16px;
+            outline: none;
         }
+
+        /* Кнопка фильтра */
+        .filter-btn {
+            background: var(--tg-theme-secondary-bg-color, #242424);
+            border: 1px solid var(--tg-theme-hint-color, #555);
+            border-radius: 10px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            flex-shrink: 0;
+            padding: 0;
+            transition: background 0.2s;
+        }
+        .filter-btn:active {
+            background: var(--tg-theme-bg-color, #181818);
+        }
+        .filter-btn svg {
+            fill: var(--tg-theme-text-color, #ffffff);
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Плашка фильтров */
+        .filter-panel {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+            background: var(--tg-theme-secondary-bg-color, #242424);
+            border-radius: 10px;
+            margin-bottom: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-sizing: border-box;
+        }
+        /* Класс для открытия плашки */
+        .filter-panel.open {
+            max-height: 120px; /* Достаточно для двух пунктов */
+            padding: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--tg-theme-hint-color, #555);
+        }
+
+        .filter-option {
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .filter-option:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        /* Активный фильтр */
+        .filter-option.active {
+            background: var(--tg-theme-button-color, #248bcf);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            font-weight: bold;
+        }
+
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -76,21 +151,42 @@
     </style>
 </head>
 <body>
-      <input type="text" id="search" class="search-box" placeholder="Поиск по названию или коду (например, A01A)...">
+    
+    <!-- Строка поиска с кнопкой фильтра -->
+    <div class="search-container">
+        <input type="text" id="search" class="search-box" placeholder="Поиск по названию или коду...">
+        <button id="filter-btn" class="filter-btn" title="Фильтр">
+            <!-- Иконка воронки (фильтра) -->
+            <svg viewBox="0 0 24 24">
+                <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
+            </svg>
+        </button>
+    </div>
+
+    <!-- Выдвижная плашка фильтрации -->
+    <div id="filter-panel" class="filter-panel">
+        <div class="filter-option active" data-sort="new">
+            По новизне (сначала новые)
+        </div>
+        <div class="filter-option" data-sort="old">
+            По добавлению (сначала старые)
+        </div>
+    </div>
     
     <div class="grid" id="catalog">
         <!-- Сюда JS загрузит карточки дорам -->
     </div>
 
     <script>
-                // Инициализация Telegram WebApp
+        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // ОБЯЗАТЕЛЬНО ПРОВЕРЬ, ЧТОБЫ В КОНЦЕ БЫЛО output=tsv
         const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=0&single=true&output=tsv"; 
         
         let doramas = [];
+        let currentSort = 'new'; // По умолчанию сортируем по новизне
+        let searchQuery = '';
 
         async function loadDoramas() {
             try {
@@ -98,15 +194,14 @@
                 const data = await response.text();
                 
                 const lines = data.split("\n");
-                
-                doramas = []; // Очищаем список перед загрузкой
+doramas = []; // Очищаем список перед загрузкой
 
                 for(let i = 1; i < lines.length; i++) {
                     const row = lines[i].trim();
-                    if (!row) continue; // Пропускаем абсолютно пустые строки
+                    if (!row) continue; 
                     
                     const cols = row.split("\t");
-                    if (cols.length < 2) continue; // Пропускаем строки, где нет данных
+                    if (cols.length < 2) continue; 
                     
                     doramas.push({
                         code: cols[0]?.trim(),
@@ -114,15 +209,38 @@
                         nameOrig: cols[2]?.trim(),
                         tags: cols[3]?.trim(),
                         desc: cols[4]?.trim(),
-                        // БЕРЕМ ССЫЛКУ НАПРЯМУЮ ИЗ КОЛОНКИ 5 (Постер URL)
                         poster: cols[5]?.trim(), 
                         link: cols[6]?.trim()
                     });
                 }
-                renderCatalog(doramas);
+                
+                // Применяем фильтрацию и сортировку при первой загрузке
+                filterAndRender();
+                
             } catch (error) {
                 console.error("Ошибка загрузки:", error);
             }
+        }
+
+        // Функция сортировки, фильтрации и рендеринга
+        function filterAndRender() {
+            // 1. Сначала фильтруем по поисковому запросу
+            let filtered = doramas.filter(item => 
+                item.nameRu.toLowerCase().includes(searchQuery) || 
+                item.code.toLowerCase().includes(searchQuery) ||
+                item.tags.toLowerCase().includes(searchQuery)
+            );
+
+            // 2. Затем сортируем полученный список
+            if (currentSort === 'new') {
+                // "По новизне" — новые строки внизу таблицы Гугл, поэтому разворачиваем массив
+                filtered.reverse();
+            } else {
+                // "По добавлению" — оригинальный порядок из Гугл таблицы (сверху вниз)
+                // Сортировка не требуется, так как массив уже в этом порядке
+            }
+
+            renderCatalog(filtered);
         }
 
         function renderCatalog(list) {
@@ -135,7 +253,6 @@
             }
 
             list.forEach(item => {
-                // Извлекаем ссылку на просмотр
                 let cleanLink = "#";
                 if(item.link && item.link.includes("|")) {
                     cleanLink = item.link.split("|")[1].split("]")[0];
@@ -156,18 +273,41 @@
             });
         }
 
+        // Обработчик ввода в поиск
         document.getElementById("search").addEventListener("input", (e) => {
-            const query = e.target.value.toLowerCase();
-            const filtered = doramas.filter(item => 
-                item.nameRu.toLowerCase().includes(query) || 
-                item.code.toLowerCase().includes(query) ||
-                item.tags.toLowerCase().includes(query)
-            );
-            renderCatalog(filtered);
+            searchQuery = e.target.value.toLowerCase();
+            filterAndRender();
+        });
+
+        // Логика работы выдвижной панели фильтров
+        const filterBtn = document.getElementById("filter-btn");
+        const filterPanel = document.getElementById("filter-panel");
+
+        filterBtn.addEventListener("click", () => {
+            filterPanel.classList.toggle("open");
+        });
+
+        // Обработка клика по вариантам сортировки
+        const options = document.querySelectorAll(".filter-option");
+options.forEach(option => {
+            option.addEventListener("click", () => {
+                // Убираем активный класс у всех
+                options.forEach(opt => opt.classList.remove("active"));
+                // Добавляем активный класс кликнутому
+                option.classList.add("active");
+                
+                // Меняем тип сортировки
+                currentSort = option.getAttribute("data-sort");
+                
+                // Применяем изменения
+                filterAndRender();
+                
+                // Закрываем панель фильтров после выбора
+                filterPanel.classList.remove("open");
+            });
         });
 
         loadDoramas();
-
     </script>
 </body>
 </html>
