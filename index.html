@@ -83,12 +83,12 @@
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
+                // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Раскрываем приложение на весь экран
+        tg.expand();
 
-        // СЮДА ВСТАВЬ СВОЮ ССЫЛКУ НА TSV ИЗ ШАГА 1!
-        const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=0&single=true&output=tsv"; 
+        // ОБЯЗАТЕЛЬНО ПРОВЕРЬ, ЧТОБЫ В КОНЦЕ БЫЛО output=tsv
+        const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=0&single=true&output=csv"; 
         
         let doramas = [];
 
@@ -97,13 +97,16 @@
                 const response = await fetch(tsvUrl);
                 const data = await response.text();
                 
-                // Парсим TSV данные
                 const lines = data.split("\n");
-                const headers = lines[0].split("\t");
                 
+                doramas = []; // Очищаем список перед загрузкой
+
                 for(let i = 1; i < lines.length; i++) {
-                    const cols = lines[i].split("\t");
-                    if (cols.length < 2) continue;
+                    const row = lines[i].trim();
+                    if (!row) continue; // Пропускаем абсолютно пустые строки
+                    
+                    const cols = row.split("\t");
+                    if (cols.length < 2) continue; // Пропускаем строки, где нет данных
                     
                     doramas.push({
                         code: cols[0]?.trim(),
@@ -111,9 +114,9 @@
                         nameOrig: cols[2]?.trim(),
                         tags: cols[3]?.trim(),
                         desc: cols[4]?.trim(),
-                        // Ссылка на постер на твоем гитхабе:
-                        poster: `https://raw.githubusercontent.com/Fuk1n/dorama-previews/main/posters/Dorama${cols[0]?.trim()}.jpg`,
-                        link: cols[6]?.trim() // Источники (ссылка на просмотр)
+                        // БЕРЕМ ССЫЛКУ НАПРЯМУЮ ИЗ КОЛОНКИ 5 (Постер URL)
+                        poster: cols[5]?.trim(), 
+                        link: cols[6]?.trim()
                     });
                 }
                 renderCatalog(doramas);
@@ -126,16 +129,23 @@
             const container = document.getElementById("catalog");
             container.innerHTML = "";
             
+            if (list.length === 0) {
+                container.innerHTML = "<div style='grid-column: 1/-1; text-align: center;'>Ничего не найдено...</div>";
+                return;
+            }
+
             list.forEach(item => {
-                // Извлекаем чистую ссылку из колонки Источники (например из YOUTUBE|https://...)
+                // Извлекаем ссылку на просмотр
                 let cleanLink = "#";
                 if(item.link && item.link.includes("|")) {
                     cleanLink = item.link.split("|")[1].split("]")[0];
+                } else if(item.link) {
+                    cleanLink = item.link;
                 }
 
                 container.innerHTML += `
                     <div class="card">
-                        <img src="${item.poster}" onerror="this.src='https://placehold.co/200x300?text=No+Poster'">
+                        <img src="${item.poster}" onerror="this.src='https://placehold.co/200x300?text=Обложка...'">
                         <div class="card-content">
                             <div class="title">${item.nameRu}</div>
                             <div class="tags">${item.tags}</div>
@@ -146,17 +156,18 @@
             });
         }
 
-        // Поиск в реальном времени
         document.getElementById("search").addEventListener("input", (e) => {
             const query = e.target.value.toLowerCase();
             const filtered = doramas.filter(item => 
                 item.nameRu.toLowerCase().includes(query) || 
-                item.code.toLowerCase().includes(query)
+                item.code.toLowerCase().includes(query) ||
+                item.tags.toLowerCase().includes(query)
             );
             renderCatalog(filtered);
         });
 
         loadDoramas();
+
     </script>
 </body>
 </html>
