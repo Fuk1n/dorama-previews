@@ -82,10 +82,12 @@
         <!-- Сюда JS загрузит карточки дорам -->
     </div>
 
-        <script>
+    <script>
+                // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // ОБЯЗАТЕЛЬНО ПРОВЕРЬ, ЧТОБЫ В КОНЦЕ БЫЛО output=tsv
         const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=0&single=true&output=tsv"; 
         
         let doramas = [];
@@ -94,31 +96,29 @@
             try {
                 const response = await fetch(tsvUrl);
                 const data = await response.text();
+                
                 const lines = data.split("\n");
                 
-                let loadedDoramas = []; // Временный список
+                doramas = []; // Очищаем список перед загрузкой
 
                 for(let i = 1; i < lines.length; i++) {
                     const row = lines[i].trim();
-                    if (!row) continue;
+                    if (!row) continue; // Пропускаем абсолютно пустые строки
                     
                     const cols = row.split("\t");
-                    if (cols.length < 2) continue;
+                    if (cols.length < 2) continue; // Пропускаем строки, где нет данных
                     
-                    loadedDoramas.push({
+                    doramas.push({
                         code: cols[0]?.trim(),
                         nameRu: cols[1]?.trim(),
-                        nameOrig: cols[2]?.trim(), // Английское название
+                        nameOrig: cols[2]?.trim(),
                         tags: cols[3]?.trim(),
                         desc: cols[4]?.trim(),
+                        // БЕРЕМ ССЫЛКУ НАПРЯМУЮ ИЗ КОЛОНКИ 5 (Постер URL)
                         poster: cols[5]?.trim(), 
                         link: cols[6]?.trim()
                     });
                 }
-
-                // ФИЛЬТР ПО ДАТЕ: Переворачиваем массив, чтобы последние добавленные в таблицу были вверху
-                doramas = loadedDoramas.reverse(); 
-                
                 renderCatalog(doramas);
             } catch (error) {
                 console.error("Ошибка загрузки:", error);
@@ -130,11 +130,12 @@
             container.innerHTML = "";
             
             if (list.length === 0) {
-                container.innerHTML = "<div style='grid-column: 1/-1; text-align: center; padding: 20px;'>Ничего не найдено...</div>";
+                container.innerHTML = "<div style='grid-column: 1/-1; text-align: center;'>Ничего не найдено...</div>";
                 return;
             }
 
             list.forEach(item => {
+                // Извлекаем ссылку на просмотр
                 let cleanLink = "#";
                 if(item.link && item.link.includes("|")) {
                     cleanLink = item.link.split("|")[1].split("]")[0];
@@ -155,12 +156,10 @@
             });
         }
 
-        // УЛУЧШЕННЫЙ ПОИСК: Ищет по коду, русскому названию, английскому названию и тегам
         document.getElementById("search").addEventListener("input", (e) => {
             const query = e.target.value.toLowerCase();
             const filtered = doramas.filter(item => 
                 item.nameRu.toLowerCase().includes(query) || 
-                item.nameOrig.toLowerCase().includes(query) || // Поиск по латинице
                 item.code.toLowerCase().includes(query) ||
                 item.tags.toLowerCase().includes(query)
             );
@@ -168,7 +167,7 @@
         });
 
         loadDoramas();
-    </script>
 
+    </script>
 </body>
 </html>
