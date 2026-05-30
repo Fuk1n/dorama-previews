@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dorama App</title>
+    <!-- Подключаем официальный скрипт Telegram WebApp -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--tg-theme-bg-color, #181818);
+            color: var(--tg-theme-text-color, #ffffff);
+            margin: 0;
+            padding: 15px;
+        }
+        .search-box {
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid var(--tg-theme-hint-color, #555);
+            background: var(--tg-theme-secondary-bg-color, #242424);
+            color: #fff;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+            font-size: 16px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #242424);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+        }
+        .card img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        .card-content {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+        .title {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 0 0 5px 0;
+            line-height: 1.2;
+        }
+        .tags {
+            font-size: 10px;
+            color: var(--tg-theme-link-color, #248bcf);
+            margin-bottom: 10px;
+        }
+        .btn {
+            background: var(--tg-theme-button-color, #248bcf);
+            color: var(--tg-theme-button-text-color, #ffffff);
+            border: none;
+            padding: 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            text-align: center;
+            text-decoration: none;
+            font-size: 12px;
+            margin-top: auto;
+        }
+    </style>
+</head>
+<body>
+      <input type="text" id="search" class="search-box" placeholder="Поиск по названию или коду (например, A01A)...">
+    
+    <div class="grid" id="catalog">
+        <!-- Сюда JS загрузит карточки дорам -->
+    </div>
+
+    <script>
+        // Инициализация Telegram WebApp
+        const tg = window.Telegram.WebApp;
+        tg.expand(); // Раскрываем приложение на весь экран
+
+        // СЮДА ВСТАВЬ СВОЮ ССЫЛКУ НА TSV ИЗ ШАГА 1!
+        const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pubhtml?gid=0&single=true"; 
+        
+        let doramas = [];
+
+        async function loadDoramas() {
+            try {
+                const response = await fetch(tsvUrl);
+                const data = await response.text();
+                
+                // Парсим TSV данные
+                const lines = data.split("\n");
+                const headers = lines[0].split("\t");
+                
+                for(let i = 1; i < lines.length; i++) {
+                    const cols = lines[i].split("\t");
+                    if (cols.length < 2) continue;
+                    
+                    doramas.push({
+                        code: cols[0]?.trim(),
+                        nameRu: cols[1]?.trim(),
+                        nameOrig: cols[2]?.trim(),
+                        tags: cols[3]?.trim(),
+                        desc: cols[4]?.trim(),
+                        // Ссылка на постер на твоем гитхабе:
+                        poster: `https://raw.githubusercontent.com/Fuk1n/dorama-previews/main/posters/Dorama${cols[0]?.trim()}.jpg`,
+                        link: cols[6]?.trim() // Источники (ссылка на просмотр)
+                    });
+                }
+                renderCatalog(doramas);
+            } catch (error) {
+                console.error("Ошибка загрузки:", error);
+            }
+        }
+
+        function renderCatalog(list) {
+            const container = document.getElementById("catalog");
+            container.innerHTML = "";
+            
+            list.forEach(item => {
+                // Извлекаем чистую ссылку из колонки Источники (например из YOUTUBE|https://...)
+                let cleanLink = "#";
+                if(item.link && item.link.includes("|")) {
+                    cleanLink = item.link.split("|")[1].split("]")[0];
+                }
+
+                container.innerHTML += `
+                    <div class="card">
+                        <img src="${item.poster}" onerror="this.src='https://placehold.co/200x300?text=No+Poster'">
+                        <div class="card-content">
+                            <div class="title">${item.nameRu}</div>
+                            <div class="tags">${item.tags}</div>
+                            <a href="${cleanLink}" target="_blank" class="btn">Смотреть</a>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        // Поиск в реальном времени
+        document.getElementById("search").addEventListener("input", (e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = doramas.filter(item => 
+                item.nameRu.toLowerCase().includes(query) || 
+                item.code.toLowerCase().includes(query)
+            );
+            renderCatalog(filtered);
+        });
+
+        loadDoramas();
+    </script>
+</body>
+</html>
