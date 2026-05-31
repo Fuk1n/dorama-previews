@@ -12,7 +12,33 @@
             background-color: var(--tg-theme-bg-color, #181818);
             color: var(--tg-theme-text-color, #ffffff);
             margin: 0;
-            padding: 15px;
+            padding: 15px 15px 80px 15px; /* Увеличили нижний отступ, чтобы баннер не перекрывал контент */
+        }
+
+        /* Шапка с кнопкой VIP/Донат */
+        .header-monetization {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+            padding: 10px 15px;
+            border-radius: 10px;
+            color: #000;
+        }
+        .header-monetization span {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .vip-btn {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
         }
 
         /* Контейнер для поиска и кнопки фильтра */
@@ -72,9 +98,8 @@
             gap: 8px;
             box-sizing: border-box;
         }
-        /* Класс для открытия плашки */
         .filter-panel.open {
-            max-height: 120px; /* Достаточно для двух пунктов */
+            max-height: 120px;
             padding: 12px;
             margin-bottom: 20px;
             border: 1px solid var(--tg-theme-hint-color, #555);
@@ -93,7 +118,6 @@
         .filter-option:hover {
             background: rgba(255, 255, 255, 0.05);
         }
-        /* Активный фильтр */
         .filter-option.active {
             background: var(--tg-theme-button-color, #248bcf);
             color: var(--tg-theme-button-text-color, #ffffff);
@@ -148,15 +172,48 @@
             font-size: 12px;
             margin-top: auto;
         }
+
+        /* Липкий Рекламный Баннер внизу экрана */
+        .ads-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: #242424;
+            border-top: 1px solid var(--tg-theme-hint-color, #555);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        /* Внутренний контейнер рекламы */
+        .ads-content {
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+            font-size: 12px;
+            color: #aaa;
+        }
+        .ads-content a {
+            color: #248bcf;
+            text-decoration: none;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
+
+    <!-- Шапка с предложением отключить рекламу / поддержать -->
+    <div class="header-monetization">
+        <span>Смотри без рекламы! 🍿</span>
+        <button class="vip-btn" onclick="buyVip()">🔥 VIP</button>
+    </div>
     
     <!-- Строка поиска с кнопкой фильтра -->
     <div class="search-container">
         <input type="text" id="search" class="search-box" placeholder="Поиск по названию или коду...">
         <button id="filter-btn" class="filter-btn" title="Фильтр">
-            <!-- Иконка воронки (фильтра) -->
             <svg viewBox="0 0 24 24">
                 <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
             </svg>
@@ -174,27 +231,33 @@
     </div>
     
     <div class="grid" id="catalog">
-        <!-- Сюда JS загрузит карточки дорам -->
+        <!-- Карточки дорам -->
+    </div>
+
+    <!-- Рекламный баннер снизу -->
+    <div class="ads-banner">
+        <div class="ads-content" id="ad-slot">
+            <!-- Сюда встраивается баннер AdsGram или твоя собственная реклама -->
+            <span>Реклама: <a href="https://t.me/твой_канал" target="_blank">Подпишись на наш Telegram канал! 📢</a></span>
+        </div>
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
 
         const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=0&single=true&output=tsv"; 
         
         let doramas = [];
-        let currentSort = 'new'; // По умолчанию сортируем по новизне
+        let currentSort = 'new'; 
         let searchQuery = '';
 
         async function loadDoramas() {
             try {
                 const response = await fetch(tsvUrl);
                 const data = await response.text();
-                
                 const lines = data.split("\n");
-doramas = []; // Очищаем список перед загрузкой
+                doramas = []; 
 
                 for(let i = 1; i < lines.length; i++) {
                     const row = lines[i].trim();
@@ -213,33 +276,22 @@ doramas = []; // Очищаем список перед загрузкой
                         link: cols[6]?.trim()
                     });
                 }
-                
-                // Применяем фильтрацию и сортировку при первой загрузке
                 filterAndRender();
-                
             } catch (error) {
                 console.error("Ошибка загрузки:", error);
             }
         }
 
-        // Функция сортировки, фильтрации и рендеринга
         function filterAndRender() {
-            // 1. Сначала фильтруем по поисковому запросу
             let filtered = doramas.filter(item => 
                 item.nameRu.toLowerCase().includes(searchQuery) || 
                 item.code.toLowerCase().includes(searchQuery) ||
                 item.tags.toLowerCase().includes(searchQuery)
             );
 
-            // 2. Затем сортируем полученный список
             if (currentSort === 'new') {
-                // "По новизне" — новые строки внизу таблицы Гугл, поэтому разворачиваем массив
                 filtered.reverse();
-            } else {
-                // "По добавлению" — оригинальный порядок из Гугл таблицы (сверху вниз)
-                // Сортировка не требуется, так как массив уже в этом порядке
             }
-
             renderCatalog(filtered);
         }
 
@@ -256,30 +308,50 @@ doramas = []; // Очищаем список перед загрузкой
                 let cleanLink = "#";
                 if(item.link && item.link.includes("|")) {
                     cleanLink = item.link.split("|")[1].split("]")[0];
-                } else if(item.link) {
+} else if(item.link) {
                     cleanLink = item.link;
                 }
 
+                // Кнопка запускает показ рекламы ПЕРЕД переходом
                 container.innerHTML += `
                     <div class="card">
                         <img src="${item.poster}" onerror="this.src='https://placehold.co/200x300?text=Обложка...'">
                         <div class="card-content">
                             <div class="title">${item.nameRu}</div>
                             <div class="tags">${item.tags}</div>
-                            <a href="${cleanLink}" target="_blank" class="btn">Смотреть</a>
+                            <button onclick="watchDorama('${cleanLink}')" class="btn">Смотреть</button>
                         </div>
                     </div>
                 `;
             });
         }
 
-        // Обработчик ввода в поиск
+        // Логика перехода на дораму (сюда можно встроить показ рекламы)
+        function watchDorama(link) {
+            // Идея: Сначала показываем рекламу, а потом открываем ссылку.
+            // Ниже простой пример с подтверждением, но тут может быть вызов AdsGram
+            if(link !== "#") {
+                tg.openLink(link);
+            } else {
+                tg.showAlert("Ссылка на просмотр временно недоступна!");
+            }
+        }
+
+        // Функция покупки VIP
+        function buyVip() {
+            tg.showConfirm("Хотите приобрести VIP-статус за 50 Telegram Stars, чтобы отключить всю рекламу?", (confirm) => {
+                if (confirm) {
+                    // Здесь будет вызов API бота для оплаты через Telegram Stars.
+                    tg.showAlert("Оплата запущена! (Интегрируйте это с вашим ботом)");
+                }
+            });
+        }
+
         document.getElementById("search").addEventListener("input", (e) => {
             searchQuery = e.target.value.toLowerCase();
             filterAndRender();
         });
 
-        // Логика работы выдвижной панели фильтров
         const filterBtn = document.getElementById("filter-btn");
         const filterPanel = document.getElementById("filter-panel");
 
@@ -287,22 +359,13 @@ doramas = []; // Очищаем список перед загрузкой
             filterPanel.classList.toggle("open");
         });
 
-        // Обработка клика по вариантам сортировки
         const options = document.querySelectorAll(".filter-option");
-options.forEach(option => {
+        options.forEach(option => {
             option.addEventListener("click", () => {
-                // Убираем активный класс у всех
                 options.forEach(opt => opt.classList.remove("active"));
-                // Добавляем активный класс кликнутому
                 option.classList.add("active");
-                
-                // Меняем тип сортировки
                 currentSort = option.getAttribute("data-sort");
-                
-                // Применяем изменения
                 filterAndRender();
-                
-                // Закрываем панель фильтров после выбора
                 filterPanel.classList.remove("open");
             });
         });
