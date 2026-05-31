@@ -260,8 +260,6 @@
                     } catch (e) {
                         console.warn('buyVip: sendData упал:', e);
                     }
-                }
-            }
                 } else {
                     console.warn('buyVip: sendData недоступен, делаем fallback');
                 }
@@ -269,56 +267,30 @@
                 if (!sent) {
                     // fallback: открываем deep-link (передаём payload в /start)
                     try {
-                    const payload = JSON.stringify({ action: "buyvip" });
-                    }
-
-            let sendPromise = null;
-            if (tg && typeof tg.sendData === 'function') {
-                try {
-                    // sendData синхронный вызов, но лучше подстраховаться таймаутом
-                    tg.sendData(payload);
-                    console.log('buyVip: sendData вызван');
-                    // даём 500ms на отправку/обработку, прежде чем закрывать
-                    sendPromise = new Promise(resolve => setTimeout(resolve, 500));
-                } catch (e) {
-                    console.warn('buyVip: sendData упал:', e);
-                    sendPromise = Promise.reject(e);
-                }
-            } else {
-                console.warn('buyVip: sendData недоступен, делаем fallback');
-                sendPromise = Promise.reject(new Error('sendData недоступен'));
-            }
-
-            sendPromise
-                .then(() => {
-                    try { tg.close(); } catch(e){ console.warn('tg.close failed', e); }
-                })
-                .catch(() => {
-                    // fallback: открываем deep-link чтобы бот получил /start payload
-                    try {
-                        const link = `tg://resolve?domain=${botUsername}&start=buyvip`;
+                        const link = `https://t.me/${botUsername}?start=buyvip`;
                         console.log('buyVip: fallback openTelegramLink ->', link);
                         if (tg && typeof tg.openTelegramLink === 'function') {
                             tg.openTelegramLink(link);
                         } else {
-                            window.location.href = `https://t.me/${botUsername}?start=buyvip`;
+                            // если нет openTelegramLink, просто открываем ссылку
+                            window.location.href = link;
                         }
                     } catch (e) {
                         console.error('buyVip: fallback openTelegramLink упал:', e);
-                    } finally {
-                        try { tg.close(); } catch(e){ console.warn('tg.close failed', e); }
                     }
-                })
-                .finally(() => {
-                    setTimeout(() => { btn.disabled = false; }, 2000);
-                });
-
-        } catch (err) {
-            console.error('buyVip: общая ошибка:', err);
-            try { tg.close(); } catch(e){ }
-            document.getElementById('vip-btn').disabled = false;
+                }
+            } catch (err) {
+                console.error('buyVip: общая ошибка:', err);
+            } finally {
+                // закрываем WebApp в конце (если Telegram позволяет)
+                try { tg.close(); } catch (e) { console.warn('tg.close failed', e); }
+                // на случай, если окно не закрылось, вернём кнопку в активное состояние через 2 секунды
+                setTimeout(() => {
+                    try { document.getElementById('vip-btn').disabled = false; } catch(e){}
+                }, 2000);
+            }
         }
-            
+
         async function loadDoramas() {
             await checkVipStatus();
             try {
