@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -7,20 +6,16 @@
     <title>Dorama App</title>
     <!-- Подключаем официальный скрипт Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    
-    <!-- ПОДКЛЮЧАЕМ СКРИПТ ADSGRAM -->
+    <!-- Подключаем AdsGram -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
-
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--tg-theme-bg-color, #181818);
             color: var(--tg-theme-text-color, #ffffff);
             margin: 0;
-            padding: 15px 15px 80px 15px; /* Нижний отступ под баннер */
+            padding: 15px 15px 80px 15px;
         }
-
-        /* Шапка с кнопкой VIP/Донат */
         .header-monetization {
             display: flex;
             justify-content: space-between;
@@ -30,6 +25,9 @@
             padding: 10px 15px;
             border-radius: 10px;
             color: #000;
+        }
+        .header-monetization.is-vip {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
         }
         .header-monetization span {
             font-weight: bold;
@@ -183,9 +181,9 @@
 </head>
 <body>
 
-    <div class="header-monetization">
-        <span>Смотри без рекламы! 🍿</span>
-        <button class="vip-btn" onclick="buyVip()">🔥 VIP</button>
+    <div class="header-monetization" id="vip-header">
+        <span id="vip-text">Смотри без рекламы! 🍿</span>
+        <button class="vip-btn" id="vip-btn" onclick="buyVip()">🔥 VIP</button>
     </div>
     
     <div class="search-container">
@@ -204,9 +202,8 @@
     
     <div class="grid" id="catalog"></div>
 
-    <div class="ads-banner">
-        <div class="ads-conte
-nt">
+    <div class="ads-banner" id="bottom-ad-banner">
+        <div class="ads-content">
             <span>Реклама поддерживает наш проект ❤️</span>
         </div>
     </div>
@@ -215,15 +212,83 @@ nt">
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // 1. ИНИЦИАЛИЗАЦИЯ ADSGRAM (Замени '33569' на ID из AdsGram)
+        // Инициализация AdsGram (замени на свой рабочий ID)
         const AdController = window.Adsgram.init({ blockId: "33569" });
 
         const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=0&single=true&output=tsv"; 
+        
+        // 1. ССЫЛКА НА ТВОЙ VIP ЛИСТ ИЗ GOOGLE ТАБЛИЦ (Замени на свою!)
+        const vipTsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=888526673&single=true&output=tsv";
+d
         let doramas = [];
         let currentSort = 'new'; 
         let searchQuery = '';
+        let userIsVip = false; // По умолчанию пользователь НЕ VIP
+
+        // Функция проверки VIP статуса
+        async function checkVipStatus() {
+            try {
+                const userId = tg.initDataUnsafe?.user?.id?.toString();
+                if (!userId) return;
+
+                const response = await fetch(vipTsvUrl);
+                const data = await response.text();
+                const lines = data.split("\n");
+
+                for (let i = 1; i < lines.length; i++) {
+                    const row = lines[i].trim();
+                    if (!row) continue;
+                    const cols = row.split("\t");
+                    if (cols[0]?.trim() === userId) {
+                        userIsVip = true;
+                        break;
+                    }
+                }
+
+                if (userIsVip) {
+                    // Перестраиваем интерфейс под VIP
+                    document.getElementById("vip-header").classList.add("is-vip");
+                    document.getElementById("vip-text").innerText = "👑 У вас активен VIP-доступ!";
+                    document.getElementById("vip-btn").style.display = "none";
+                    document.getElementById("bottom-ad-banner").style.display = "none";
+                    document.body.style.paddingBottom = "15px"; // Убираем отступ снизу
+                }
+            } catch (e) {
+                console.error("Ошибка проверки VIP:", e);
+            }
+        }
+
+        // Функция покупки VIP через Make.com
+function buyVip() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const username = tg.initDataUnsafe?.user?.username || "NoName";
+
+    if (!userId) {
+        tg.showAlert("Ошибка: не удалось определить ваш Telegram ID.");
+        return;
+    }
+
+    tg.showConfirm("Хотите купить VIP за 150 ⭐️ Stars? Бот пришлет счет в чат.", (confirm) => {
+        if (confirm) {
+            // ССЫЛКА НА ТВОЙ СЦЕНАРИЙ В MAKE (Замени на свою!)
+            const makeWebhookUrl = "https://hook.us2.make.com/yinwegr6mbko0m0ly3vhxvjq7gxh7fn0";
+
+            fetch(`${makeWebhookUrl}?chat_id=${userId}&username=${username}`)
+                .then(() => {
+                    tg.showAlert("Счет на оплату отправлен вам в чат с ботом! Закройте приложение и оплатите его.");
+                    tg.close();
+                })
+                .catch(() => {
+                    tg.showAlert("Произошла ошибка при создании счета. Попробуйте позже.");
+                });
+        }
+    });
+}
+
+
 
         async function loadDoramas() {
+            await checkVipStatus(); // Сначала проверяем VIP
             try {
                 const response = await fetch(tsvUrl);
                 const data = await response.text();
@@ -288,7 +353,6 @@ nt">
                         <div class="card-content">
                             <div class="title">${item.nameRu}</div>
                             <div class="tags">${item.tags}</div>
-                            <!-- При нажатии вызываем показ рекламы -->
                             <button onclick="watchDorama('${cleanLink}')" class="btn">Смотреть</button>
                         </div>
                     </div>
@@ -296,29 +360,23 @@ nt">
             });
         }
 
-        // 2. ФУНКЦИЯ ПОКАЗА РЕКЛАМЫ И ПЕРЕХОДА
         function watchDorama(link) {
             if (link === "#") {
                 tg.showAlert("Ссылка недоступна!");
                 return;
             }
 
-            // Показываем рекламу перед переходом на дораму
-            AdController.show().then((result) => {
-                // Реклама показана успешно (или пользователь закрыл её в конце)
+            // ЕСЛИ ПОЛЬЗОВАТЕЛЬ VIP — РЕКЛАМУ НЕ ПОКАЗЫВАЕМ
+            if (userIsVip) {
                 tg.openLink(link);
-            }).catch((result) => {
-                // Ошибка показа рекламы (например, нет доступной рекламы или заблокирована)
-                // Всё равно перенаправляем пользователя на дораму, чтобы он не ушел обиженным
-                tg.openLink(link);
-            });
-        }
+                return;
+            }
 
-        function buyVip() {
-            tg.showConfirm("Хотите приобрести VIP-статус за 50.000 Telegram Stars, чтобы отключить рекламу?", (confirm) => {
-                if (confirm) {
-                    tg.showAlert("Интеграция оплаты Stars настраивается на стороне вашего бота.");
-                }
+            // Обычный пользователь смотрит рекламу
+            AdController.show().then(() => {
+                tg.openLink(link);
+            }).catch(() => {
+                tg.openLink(link);
             });
         }
 
@@ -338,7 +396,8 @@ nt">
         options.forEach(option => {
             option.addEventListener("click", () => {
                 options.forEach(opt => opt.classList.remove("active"));
-                option.classList.add("active");
+                option.classList.add("active
+");
                 currentSort = option.getAttribute("data-sort");
                 filterAndRender();
                 filterPanel.classList.remove("open");
