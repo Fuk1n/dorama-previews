@@ -396,8 +396,7 @@ function buyVip() {
         options.forEach(option => {
             option.addEventListener("click", () => {
                 options.forEach(opt => opt.classList.remove("active"));
-                option.classList.add("active
-");
+                option.classList.add("active");
                 currentSort = option.getAttribute("data-sort");
                 filterAndRender();
                 filterPanel.classList.remove("open");
