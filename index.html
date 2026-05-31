@@ -6,23 +6,51 @@
     <title>Dorama App</title>
     <!-- Подключаем официальный скрипт Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Подключаем AdsGram -->
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--tg-theme-bg-color, #181818);
             color: var(--tg-theme-text-color, #ffffff);
             margin: 0;
-            padding: 15px;
+            padding: 15px 15px 80px 15px;
+        }
+        .header-monetization {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 99%, #fecfef 100%);
+            padding: 10px 15px;
+            border-radius: 10px;
+            color: #000;
+        }
+        .header-monetization.is-vip {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+        }
+        .header-monetization span {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .vip-btn {
+            background: #000;
+            color: #fff;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
         }
 
-        /* Контейнер для поиска и кнопки фильтра */
+        /* Поиск и Фильтр */
         .search-container {
             display: flex;
             gap: 10px;
             margin-bottom: 10px;
             align-items: center;
         }
-
         .search-box {
             flex-grow: 1;
             padding: 12px;
@@ -34,8 +62,6 @@
             font-size: 16px;
             outline: none;
         }
-
-        /* Кнопка фильтра */
         .filter-btn {
             background: var(--tg-theme-secondary-bg-color, #242424);
             border: 1px solid var(--tg-theme-hint-color, #555);
@@ -48,10 +74,6 @@
             cursor: pointer;
             flex-shrink: 0;
             padding: 0;
-            transition: background 0.2s;
-        }
-        .filter-btn:active {
-            background: var(--tg-theme-bg-color, #181818);
         }
         .filter-btn svg {
             fill: var(--tg-theme-text-color, #ffffff);
@@ -59,7 +81,7 @@
             height: 20px;
         }
 
-        /* Плашка фильтров */
+        /* Выдвижная плашка */
         .filter-panel {
             max-height: 0;
             overflow: hidden;
@@ -72,34 +94,25 @@
             gap: 8px;
             box-sizing: border-box;
         }
-        /* Класс для открытия плашки */
         .filter-panel.open {
-            max-height: 120px; /* Достаточно для двух пунктов */
+            max-height: 120px;
             padding: 12px;
             margin-bottom: 20px;
             border: 1px solid var(--tg-theme-hint-color, #555);
         }
-
         .filter-option {
             padding: 8px 12px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            transition: background 0.2s;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
-        .filter-option:hover {
-            background: rgba(255, 255, 255, 0.05);
-        }
-        /* Активный фильтр */
         .filter-option.active {
             background: var(--tg-theme-button-color, #248bcf);
             color: var(--tg-theme-button-text-color, #ffffff);
             font-weight: bold;
         }
 
+        /* Сетка */
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -109,7 +122,6 @@
             background: var(--tg-theme-secondary-bg-color, #242424);
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             display: flex;
             flex-direction: column;
         }
@@ -128,7 +140,6 @@
             font-size: 14px;
             font-weight: bold;
             margin: 0 0 5px 0;
-            line-height: 1.2;
         }
         .tags {
             font-size: 10px;
@@ -144,62 +155,149 @@
             cursor: pointer;
             font-weight: bold;
             text-align: center;
-            text-decoration: none;
             font-size: 12px;
             margin-top: auto;
+        }
+
+        /* Баннер снизу */
+        .ads-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: #242424;
+            border-top: 1px solid var(--tg-theme-hint-color, #555);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .ads-content {
+            font-size: 12px;
+            color: #aaa;
         }
     </style>
 </head>
 <body>
+
+    <div class="header-monetization" id="vip-header">
+        <span id="vip-text">Смотри без рекламы! 🍿</span>
+        <button class="vip-btn" id="vip-btn" onclick="buyVip()">🔥 VIP</button>
+    </div>
     
-    <!-- Строка поиска с кнопкой фильтра -->
     <div class="search-container">
         <input type="text" id="search" class="search-box" placeholder="Поиск по названию или коду...">
-        <button id="filter-btn" class="filter-btn" title="Фильтр">
-            <!-- Иконка воронки (фильтра) -->
+        <button id="filter-btn" class="filter-btn">
             <svg viewBox="0 0 24 24">
                 <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
             </svg>
         </button>
     </div>
 
-    <!-- Выдвижная плашка фильтрации -->
     <div id="filter-panel" class="filter-panel">
-        <div class="filter-option active" data-sort="new">
-            По новизне (сначала новые)
-        </div>
-        <div class="filter-option" data-sort="old">
-            По добавлению (сначала старые)
-        </div>
+        <div class="filter-option active" data-sort="new">По новизне</div>
+        <div class="filter-option" data-sort="old">По добавлению</div>
     </div>
     
-    <div class="grid" id="catalog">
-        <!-- Сюда JS загрузит карточки дорам -->
+    <div class="grid" id="catalog"></div>
+
+    <div class="ads-banner" id="bottom-ad-banner">
+        <div class="ads-content">
+            <span>Реклама поддерживает наш проект ❤️</span>
+        </div>
     </div>
 
     <script>
-        // Инициализация Telegram WebApp
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // Инициализация AdsGram (замени на свой рабочий ID)
+        const AdController = window.Adsgram.init({ blockId: "33569" });
+
         const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=0&single=true&output=tsv"; 
         
+        // 1. ССЫЛКА НА ТВОЙ VIP ЛИСТ ИЗ GOOGLE ТАБЛИЦ (Замени на свою!)
+        const vipTsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=888526673&single=true&output=tsv";
+d
         let doramas = [];
-        let currentSort = 'new'; // По умолчанию сортируем по новизне
+        let currentSort = 'new'; 
         let searchQuery = '';
+        let userIsVip = false; // По умолчанию пользователь НЕ VIP
+
+        // Функция проверки VIP статуса
+        async function checkVipStatus() {
+            try {
+                const userId = tg.initDataUnsafe?.user?.id?.toString();
+                if (!userId) return;
+
+                const response = await fetch(vipTsvUrl);
+                const data = await response.text();
+                const lines = data.split("\n");
+
+                for (let i = 1; i < lines.length; i++) {
+                    const row = lines[i].trim();
+                    if (!row) continue;
+                    const cols = row.split("\t");
+                    if (cols[0]?.trim() === userId) {
+                        userIsVip = true;
+                        break;
+                    }
+                }
+
+                if (userIsVip) {
+                    // Перестраиваем интерфейс под VIP
+                    document.getElementById("vip-header").classList.add("is-vip");
+                    document.getElementById("vip-text").innerText = "👑 У вас активен VIP-доступ!";
+                    document.getElementById("vip-btn").style.display = "none";
+                    document.getElementById("bottom-ad-banner").style.display = "none";
+                    document.body.style.paddingBottom = "15px"; // Убираем отступ снизу
+                }
+            } catch (e) {
+                console.error("Ошибка проверки VIP:", e);
+            }
+        }
+
+        // Функция покупки VIP через Make.com
+function buyVip() {
+    const userId = tg.initDataUnsafe?.user?.id;
+    const username = tg.initDataUnsafe?.user?.username || "NoName";
+
+    if (!userId) {
+        tg.showAlert("Ошибка: не удалось определить ваш Telegram ID.");
+        return;
+    }
+
+    tg.showConfirm("Хотите купить VIP за 150 ⭐️ Stars? Бот пришлет счет в чат.", (confirm) => {
+        if (confirm) {
+            // ССЫЛКА НА ТВОЙ СЦЕНАРИЙ В MAKE (Замени на свою!)
+            const makeWebhookUrl = "https://hook.us2.make.com/yinwegr6mbko0m0ly3vhxvjq7gxh7fn0";
+
+            fetch(`${makeWebhookUrl}?chat_id=${userId}&username=${username}`)
+                .then(() => {
+                    tg.showAlert("Счет на оплату отправлен вам в чат с ботом! Закройте приложение и оплатите его.");
+                    tg.close();
+                })
+                .catch(() => {
+                    tg.showAlert("Произошла ошибка при создании счета. Попробуйте позже.");
+                });
+        }
+    });
+}
+
+
 
         async function loadDoramas() {
+            await checkVipStatus(); // Сначала проверяем VIP
             try {
                 const response = await fetch(tsvUrl);
                 const data = await response.text();
-                
                 const lines = data.split("\n");
-doramas = []; // Очищаем список перед загрузкой
+                doramas = []; 
 
                 for(let i = 1; i < lines.length; i++) {
                     const row = lines[i].trim();
                     if (!row) continue; 
-                    
                     const cols = row.split("\t");
                     if (cols.length < 2) continue; 
                     
@@ -213,33 +311,22 @@ doramas = []; // Очищаем список перед загрузкой
                         link: cols[6]?.trim()
                     });
                 }
-                
-                // Применяем фильтрацию и сортировку при первой загрузке
                 filterAndRender();
-                
             } catch (error) {
                 console.error("Ошибка загрузки:", error);
             }
         }
 
-        // Функция сортировки, фильтрации и рендеринга
         function filterAndRender() {
-            // 1. Сначала фильтруем по поисковому запросу
             let filtered = doramas.filter(item => 
                 item.nameRu.toLowerCase().includes(searchQuery) || 
                 item.code.toLowerCase().includes(searchQuery) ||
                 item.tags.toLowerCase().includes(searchQuery)
             );
 
-            // 2. Затем сортируем полученный список
             if (currentSort === 'new') {
-                // "По новизне" — новые строки внизу таблицы Гугл, поэтому разворачиваем массив
                 filtered.reverse();
-            } else {
-                // "По добавлению" — оригинальный порядок из Гугл таблицы (сверху вниз)
-                // Сортировка не требуется, так как массив уже в этом порядке
             }
-
             renderCatalog(filtered);
         }
 
@@ -266,20 +353,38 @@ doramas = []; // Очищаем список перед загрузкой
                         <div class="card-content">
                             <div class="title">${item.nameRu}</div>
                             <div class="tags">${item.tags}</div>
-                            <a href="${cleanLink}" target="_blank" class="btn">Смотреть</a>
+                            <button onclick="watchDorama('${cleanLink}')" class="btn">Смотреть</button>
                         </div>
                     </div>
                 `;
             });
         }
 
-        // Обработчик ввода в поиск
+        function watchDorama(link) {
+            if (link === "#") {
+                tg.showAlert("Ссылка недоступна!");
+                return;
+            }
+
+            // ЕСЛИ ПОЛЬЗОВАТЕЛЬ VIP — РЕКЛАМУ НЕ ПОКАЗЫВАЕМ
+            if (userIsVip) {
+                tg.openLink(link);
+                return;
+            }
+
+            // Обычный пользователь смотрит рекламу
+            AdController.show().then(() => {
+                tg.openLink(link);
+            }).catch(() => {
+                tg.openLink(link);
+            });
+        }
+
         document.getElementById("search").addEventListener("input", (e) => {
             searchQuery = e.target.value.toLowerCase();
             filterAndRender();
         });
 
-        // Логика работы выдвижной панели фильтров
         const filterBtn = document.getElementById("filter-btn");
         const filterPanel = document.getElementById("filter-panel");
 
@@ -287,22 +392,14 @@ doramas = []; // Очищаем список перед загрузкой
             filterPanel.classList.toggle("open");
         });
 
-        // Обработка клика по вариантам сортировки
         const options = document.querySelectorAll(".filter-option");
-options.forEach(option => {
+        options.forEach(option => {
             option.addEventListener("click", () => {
-                // Убираем активный класс у всех
                 options.forEach(opt => opt.classList.remove("active"));
-                // Добавляем активный класс кликнутому
-                option.classList.add("active");
-                
-                // Меняем тип сортировки
+                option.classList.add("active
+");
                 currentSort = option.getAttribute("data-sort");
-                
-                // Применяем изменения
                 filterAndRender();
-                
-                // Закрываем панель фильтров после выбора
                 filterPanel.classList.remove("open");
             });
         });
