@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dorama App</title>
-    <!-- Подключаем официальный скрипт Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Подключаем AdsGram -->
     <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
     <style>
         body {
@@ -43,8 +41,6 @@
             font-weight: bold;
             cursor: pointer;
         }
-
-        /* Поиск и Фильтр */
         .search-container {
             display: flex;
             gap: 10px;
@@ -80,8 +76,6 @@
             width: 20px;
             height: 20px;
         }
-
-        /* Выдвижная плашка */
         .filter-panel {
             max-height: 0;
             overflow: hidden;
@@ -111,8 +105,6 @@
             color: var(--tg-theme-button-text-color, #ffffff);
             font-weight: bold;
         }
-
-        /* Сетка */
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -158,8 +150,6 @@
             font-size: 12px;
             margin-top: auto;
         }
-
-        /* Баннер снизу */
         .ads-banner {
             position: fixed;
             bottom: 0;
@@ -205,27 +195,23 @@
     <div class="ads-banner" id="bottom-ad-banner">
         <div class="ads-content">
             <span>Реклама поддерживает наш проект ❤️</span>
-        </div>
+</div>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
 
-        // Инициализация AdsGram (замени на свой рабочий ID)
         const AdController = window.Adsgram.init({ blockId: "33569" });
 
         const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=0&single=true&output=tsv"; 
-        
-        // 1. ССЫЛКА НА ТВОЙ VIP ЛИСТ ИЗ GOOGLE ТАБЛИЦ (Замени на свою!)
         const vipTsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=888526673&single=true&output=tsv";
-d
+
         let doramas = [];
         let currentSort = 'new'; 
         let searchQuery = '';
-        let userIsVip = false; // По умолчанию пользователь НЕ VIP
+        let userIsVip = false;
 
-        // Функция проверки VIP статуса
         async function checkVipStatus() {
             try {
                 const userId = tg.initDataUnsafe?.user?.id?.toString();
@@ -246,49 +232,44 @@ d
                 }
 
                 if (userIsVip) {
-                    // Перестраиваем интерфейс под VIP
                     document.getElementById("vip-header").classList.add("is-vip");
                     document.getElementById("vip-text").innerText = "👑 У вас активен VIP-доступ!";
                     document.getElementById("vip-btn").style.display = "none";
                     document.getElementById("bottom-ad-banner").style.display = "none";
-                    document.body.style.paddingBottom = "15px"; // Убираем отступ снизу
+                    document.body.style.paddingBottom = "15px";
                 }
             } catch (e) {
                 console.error("Ошибка проверки VIP:", e);
             }
         }
 
-        // Функция покупки VIP через Make.com
-function buyVip() {
-    const userId = tg.initDataUnsafe?.user?.id;
-    const username = tg.initDataUnsafe?.user?.username || "NoName";
+        function buyVip() {
+            const userId = tg.initDataUnsafe?.user?.id;
+            const username = tg.initDataUnsafe?.user?.username || "NoName";
 
-    if (!userId) {
-        tg.showAlert("Ошибка: не удалось определить ваш Telegram ID.");
-        return;
-    }
+            if (!userId) {
+                tg.showAlert("Ошибка: не удалось определить ваш Telegram ID.");
+                return;
+            }
 
-    tg.showConfirm("Хотите купить VIP за 150 ⭐️ Stars? Бот пришлет счет в чат.", (confirm) => {
-        if (confirm) {
-            // ССЫЛКА НА ТВОЙ СЦЕНАРИЙ В MAKE (Замени на свою!)
-            const makeWebhookUrl = "https://hook.us2.make.com/yinwegr6mbko0m0ly3vhxvjq7gxh7fn0";
+            tg.showConfirm("Хотите купить VIP за 150 ⭐️ Stars? Бот пришлет счет в чат.", (confirm) => {
+                if (confirm) {
+                    const makeWebhookUrl = "https://hook.us2.make.com/yinwegr6mbko0m0ly3vhxvjq7gxh7fn0";
 
-            fetch(`${makeWebhookUrl}?chat_id=${userId}&username=${username}`)
-                .then(() => {
-                    tg.showAlert("Счет на оплату отправлен вам в чат с ботом! Закройте приложение и оплатите его.");
-                    tg.close();
-                })
-                .catch(() => {
-                    tg.showAlert("Произошла ошибка при создании счета. Попробуйте позже.");
-                });
+                    fetch(`${makeWebhookUrl}?chat_id=${userId}&username=${username}`)
+                        .then(() => {
+                            tg.showAlert("Счет на оплату отправлен вам в чат с ботом! Закройте приложение и оплатите его.");
+                            tg.close();
+                        })
+                        .catch(() => {
+                            tg.showAlert("Произошла ошибка при создании счета. Попробуйте позже.");
+                        });
+                }
+            });
         }
-    });
-}
-
-
 
         async function loadDoramas() {
-            await checkVipStatus(); // Сначала проверяем VIP
+            await checkVipStatus();
             try {
                 const response = await fetch(tsvUrl);
                 const data = await response.text();
@@ -365,14 +346,10 @@ function buyVip() {
                 tg.showAlert("Ссылка недоступна!");
                 return;
             }
-
-            // ЕСЛИ ПОЛЬЗОВАТЕЛЬ VIP — РЕКЛАМУ НЕ ПОКАЗЫВАЕМ
             if (userIsVip) {
                 tg.openLink(link);
                 return;
             }
-
-            // Обычный пользователь смотрит рекламу
             AdController.show().then(() => {
                 tg.openLink(link);
             }).catch(() => {
