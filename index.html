@@ -173,7 +173,7 @@
 
     <div class="header-monetization" id="vip-header">
         <span id="vip-text">Смотри без рекламы! 🍿</span>
-        <button class="vip-btn" id="vip-btn" offclick="buyVip()">🔥 VIP</button>
+        <button class="vip-btn" id="vip-btn" onclick="buyVip()">🔥 VIP</button>
     </div>
     
     <div class="search-container">
@@ -244,10 +244,11 @@
         }
 
                 function buyVip() {
+            const tg = window.Telegram?.WebApp;
             const botUsername = "doramattbot"; 
             
             // Эта ссылка закроет WebApp и запустит твою команду в PuzzleBot
-            tg.openTelegramLink(`https://t.me/${botUsername}?start=buyvip`);
+            tg.openTelegramLink(https://t.me/${botUsername}?start=buyvip);
             tg.close();
         }
 
