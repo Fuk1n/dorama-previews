@@ -175,7 +175,7 @@
         <span id="vip-text">Смотри без рекламы! 🍿</span>
         <button class="vip-btn" id="vip-btn" onclick="buyVip()">🔥 VIP</button>
     </div>
-    
+
     <div class="search-container">
         <input type="text" id="search" class="search-box" placeholder="Поиск по названию или коду...">
         <button id="filter-btn" class="filter-btn">
@@ -189,13 +189,13 @@
         <div class="filter-option active" data-sort="new">По новизне</div>
         <div class="filter-option" data-sort="old">По добавлению</div>
     </div>
-    
+
     <div class="grid" id="catalog"></div>
 
     <div class="ads-banner" id="bottom-ad-banner">
         <div class="ads-content">
             <span>Реклама поддерживает наш проект ❤️</span>
-</div>
+        </div>
     </div>
 
     <script>
@@ -243,15 +243,53 @@
             }
         }
 
-                function buyVip() {
-            const tg = window.Telegram?.WebApp;
-            const botUsername = "doramattbot"; 
-            
-            // Эта ссылка закроет WebApp и запустит твою команду в PuzzleBot
-            tg.openTelegramLink(https://t.me/${botUsername}?start=buyvip);
-            tg.close();
-        }
+        function buyVip() {
+            const botUsername = "doramattbot"; // поменяй, если нужно
+            // visual feedback в консоль и временно блокируем кнопку (на случай, если WebApp не закроется сразу)
+            try {
+                console.log('buyVip: попытка отправить событие в бота...');
+                document.getElementById('vip-btn').disabled = true;
+                let sent = false;
 
+                if (tg && typeof tg.sendData === 'function') {
+                    // primary: отправляем web_app_data боту
+                    try {
+                        tg.sendData(JSON.stringify({ action: "buyvip" }));
+                        console.log('buyVip: sendData отправлен');
+                        sent = true;
+                    } catch (e) {
+                        console.warn('buyVip: sendData упал:', e);
+                    }
+                } else {
+                    console.warn('buyVip: sendData недоступен, делаем fallback');
+                }
+
+                if (!sent) {
+                    // fallback: открываем deep-link (передаём payload в /start)
+                    try {
+                        const link = `https://t.me/${botUsername}?start=buyvip`;
+                        console.log('buyVip: fallback openTelegramLink ->', link);
+                        if (tg && typeof tg.openTelegramLink === 'function') {
+                            tg.openTelegramLink(link);
+                        } else {
+                            // если нет openTelegramLink, просто открываем ссылку
+                            window.location.href = link;
+                        }
+                    } catch (e) {
+                        console.error('buyVip: fallback openTelegramLink упал:', e);
+                    }
+                }
+            } catch (err) {
+                console.error('buyVip: общая ошибка:', err);
+            } finally {
+                // закрываем WebApp в конце (если Telegram позволяет)
+                try { tg.close(); } catch (e) { console.warn('tg.close failed', e); }
+                // на случай, если окно не закрылось, вернём кнопку в активное состояние через 2 секунды
+                setTimeout(() => {
+                    try { document.getElementById('vip-btn').disabled = false; } catch(e){}
+                }, 2000);
+            }
+        }
 
         async function loadDoramas() {
             await checkVipStatus();
@@ -285,9 +323,9 @@
 
         function filterAndRender() {
             let filtered = doramas.filter(item => 
-                item.nameRu.toLowerCase().includes(searchQuery) || 
-                item.code.toLowerCase().includes(searchQuery) ||
-                item.tags.toLowerCase().includes(searchQuery)
+                (item.nameRu || '').toLowerCase().includes(searchQuery) || 
+                (item.code || '').toLowerCase().includes(searchQuery) ||
+                (item.tags || '').toLowerCase().includes(searchQuery)
             );
 
             if (currentSort === 'new') {
