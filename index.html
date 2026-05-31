@@ -267,7 +267,7 @@
                 if (!sent) {
                     // fallback: открываем deep-link (передаём payload в /start)
                     try {
-                        const link = `tg://resolve?domain=doramattbot&start=cmd_run_4015542112`;
+                        const link = `https://t.me/${botUsername}?start=buyvip`;
                         console.log('buyVip: fallback openTelegramLink ->', link);
                         if (tg && typeof tg.openTelegramLink === 'function') {
                             tg.openTelegramLink(link);
