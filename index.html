@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -6,13 +7,17 @@
     <title>Dorama App</title>
     <!-- Подключаем официальный скрипт Telegram WebApp -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <!-- ПОДКЛЮЧАЕМ СКРИПТ ADSGRAM -->
+    <script src="https://sad.adsgram.ai/js/sad.min.js"></script>
+
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--tg-theme-bg-color, #181818);
             color: var(--tg-theme-text-color, #ffffff);
             margin: 0;
-            padding: 15px 15px 80px 15px; /* Увеличили нижний отступ, чтобы баннер не перекрывал контент */
+            padding: 15px 15px 80px 15px; /* Нижний отступ под баннер */
         }
 
         /* Шапка с кнопкой VIP/Донат */
@@ -41,14 +46,13 @@
             cursor: pointer;
         }
 
-        /* Контейнер для поиска и кнопки фильтра */
+        /* Поиск и Фильтр */
         .search-container {
             display: flex;
             gap: 10px;
             margin-bottom: 10px;
             align-items: center;
         }
-
         .search-box {
             flex-grow: 1;
             padding: 12px;
@@ -60,8 +64,6 @@
             font-size: 16px;
             outline: none;
         }
-
-        /* Кнопка фильтра */
         .filter-btn {
             background: var(--tg-theme-secondary-bg-color, #242424);
             border: 1px solid var(--tg-theme-hint-color, #555);
@@ -74,10 +76,6 @@
             cursor: pointer;
             flex-shrink: 0;
             padding: 0;
-            transition: background 0.2s;
-        }
-        .filter-btn:active {
-            background: var(--tg-theme-bg-color, #181818);
         }
         .filter-btn svg {
             fill: var(--tg-theme-text-color, #ffffff);
@@ -85,7 +83,7 @@
             height: 20px;
         }
 
-        /* Плашка фильтров */
+        /* Выдвижная плашка */
         .filter-panel {
             max-height: 0;
             overflow: hidden;
@@ -104,19 +102,11 @@
             margin-bottom: 20px;
             border: 1px solid var(--tg-theme-hint-color, #555);
         }
-
         .filter-option {
             padding: 8px 12px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            transition: background 0.2s;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .filter-option:hover {
-            background: rgba(255, 255, 255, 0.05);
         }
         .filter-option.active {
             background: var(--tg-theme-button-color, #248bcf);
@@ -124,6 +114,7 @@
             font-weight: bold;
         }
 
+        /* Сетка */
         .grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -133,7 +124,6 @@
             background: var(--tg-theme-secondary-bg-color, #242424);
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
             display: flex;
             flex-direction: column;
         }
@@ -152,7 +142,6 @@
             font-size: 14px;
             font-weight: bold;
             margin: 0 0 5px 0;
-            line-height: 1.2;
         }
         .tags {
             font-size: 10px;
@@ -168,12 +157,11 @@
             cursor: pointer;
             font-weight: bold;
             text-align: center;
-            text-decoration: none;
             font-size: 12px;
             margin-top: auto;
         }
 
-        /* Липкий Рекламный Баннер внизу экрана */
+        /* Баннер снизу */
         .ads-banner {
             position: fixed;
             bottom: 0;
@@ -187,58 +175,39 @@
             justify-content: center;
             z-index: 1000;
         }
-        /* Внутренний контейнер рекламы */
         .ads-content {
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
             font-size: 12px;
             color: #aaa;
-        }
-        .ads-content a {
-            color: #248bcf;
-            text-decoration: none;
-            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
-    <!-- Шапка с предложением отключить рекламу / поддержать -->
     <div class="header-monetization">
         <span>Смотри без рекламы! 🍿</span>
         <button class="vip-btn" onclick="buyVip()">🔥 VIP</button>
     </div>
     
-    <!-- Строка поиска с кнопкой фильтра -->
     <div class="search-container">
         <input type="text" id="search" class="search-box" placeholder="Поиск по названию или коду...">
-        <button id="filter-btn" class="filter-btn" title="Фильтр">
+        <button id="filter-btn" class="filter-btn">
             <svg viewBox="0 0 24 24">
                 <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
             </svg>
         </button>
     </div>
 
-    <!-- Выдвижная плашка фильтрации -->
     <div id="filter-panel" class="filter-panel">
-        <div class="filter-option active" data-sort="new">
-            По новизне (сначала новые)
-        </div>
-        <div class="filter-option" data-sort="old">
-            По добавлению (сначала старые)
-        </div>
+        <div class="filter-option active" data-sort="new">По новизне</div>
+        <div class="filter-option" data-sort="old">По добавлению</div>
     </div>
     
-    <div class="grid" id="catalog">
-        <!-- Карточки дорам -->
-    </div>
+    <div class="grid" id="catalog"></div>
 
-    <!-- Рекламный баннер снизу -->
     <div class="ads-banner">
-        <div class="ads-content" id="ad-slot">
-            <!-- Сюда встраивается баннер AdsGram или твоя собственная реклама -->
-            <span>Реклама: <a href="https://t.me/твой_канал" target="_blank">Подпишись на наш Telegram канал! 📢</a></span>
+        <div class="ads-conte
+nt">
+            <span>Реклама поддерживает наш проект ❤️</span>
         </div>
     </div>
 
@@ -246,8 +215,10 @@
         const tg = window.Telegram.WebApp;
         tg.expand();
 
+        // 1. ИНИЦИАЛИЗАЦИЯ ADSGRAM (Замени '33569' на ID из AdsGram)
+        const AdController = window.Adsgram.init({ blockId: "ТВОЙ_BLOCK_ID" });
+
         const tsvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTX5uaNZKtkHBG-syXyYCtsOgDSWIvSBXqmcePeizVPHs_wGj_BSsfEyXTbh6IaP3okacirVCyhDwfO/pub?gid=0&single=true&output=tsv"; 
-        
         let doramas = [];
         let currentSort = 'new'; 
         let searchQuery = '';
@@ -262,7 +233,6 @@
                 for(let i = 1; i < lines.length; i++) {
                     const row = lines[i].trim();
                     if (!row) continue; 
-                    
                     const cols = row.split("\t");
                     if (cols.length < 2) continue; 
                     
@@ -308,17 +278,17 @@
                 let cleanLink = "#";
                 if(item.link && item.link.includes("|")) {
                     cleanLink = item.link.split("|")[1].split("]")[0];
-} else if(item.link) {
+                } else if(item.link) {
                     cleanLink = item.link;
                 }
 
-                // Кнопка запускает показ рекламы ПЕРЕД переходом
                 container.innerHTML += `
                     <div class="card">
                         <img src="${item.poster}" onerror="this.src='https://placehold.co/200x300?text=Обложка...'">
                         <div class="card-content">
                             <div class="title">${item.nameRu}</div>
                             <div class="tags">${item.tags}</div>
+                            <!-- При нажатии вызываем показ рекламы -->
                             <button onclick="watchDorama('${cleanLink}')" class="btn">Смотреть</button>
                         </div>
                     </div>
@@ -326,23 +296,28 @@
             });
         }
 
-        // Логика перехода на дораму (сюда можно встроить показ рекламы)
+        // 2. ФУНКЦИЯ ПОКАЗА РЕКЛАМЫ И ПЕРЕХОДА
         function watchDorama(link) {
-            // Идея: Сначала показываем рекламу, а потом открываем ссылку.
-            // Ниже простой пример с подтверждением, но тут может быть вызов AdsGram
-            if(link !== "#") {
-                tg.openLink(link);
-            } else {
-                tg.showAlert("Ссылка на просмотр временно недоступна!");
+            if (link === "#") {
+                tg.showAlert("Ссылка недоступна!");
+                return;
             }
+
+            // Показываем рекламу перед переходом на дораму
+            AdController.show().then((result) => {
+                // Реклама показана успешно (или пользователь закрыл её в конце)
+                tg.openLink(link);
+            }).catch((result) => {
+                // Ошибка показа рекламы (например, нет доступной рекламы или заблокирована)
+                // Всё равно перенаправляем пользователя на дораму, чтобы он не ушел обиженным
+                tg.openLink(link);
+            });
         }
 
-        // Функция покупки VIP
         function buyVip() {
-            tg.showConfirm("Хотите приобрести VIP-статус за 50 Telegram Stars, чтобы отключить всю рекламу?", (confirm) => {
+            tg.showConfirm("Хотите приобрести VIP-статус за 50 Telegram Stars, чтобы отключить рекламу?", (confirm) => {
                 if (confirm) {
-                    // Здесь будет вызов API бота для оплаты через Telegram Stars.
-                    tg.showAlert("Оплата запущена! (Интегрируйте это с вашим ботом)");
+                    tg.showAlert("Интеграция оплаты Stars настраивается на стороне вашего бота.");
                 }
             });
         }
