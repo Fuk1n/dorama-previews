@@ -243,30 +243,16 @@
             }
         }
 
-        function buyVip() {
-            const userId = tg.initDataUnsafe?.user?.id;
-            const username = tg.initDataUnsafe?.user?.username || "NoName";
-
-            if (!userId) {
-                tg.showAlert("Ошибка: не удалось определить ваш Telegram ID.");
-                return;
-            }
-
-            tg.showConfirm("Хотите купить VIP за 150 ⭐️ Stars? Бот пришлет счет в чат.", (confirm) => {
-                if (confirm) {
-                    const makeWebhookUrl = "https://hook.us2.make.com/mbz78ph1jxtn6m62tel7dmg85i428xqg";
-
-                    fetch(`${makeWebhookUrl}?chat_id=${userId}&username=${username}`)
-                        .then(() => {
-                            tg.showAlert("Счет на оплату отправлен вам в чат с ботом! Закройте приложение и оплатите его.");
-                            tg.close();
-                        })
-                        .catch(() => {
-                            tg.showAlert("Произошла ошибка при создании счета. Попробуйте позже.");
-                        });
-                }
-            });
+                function buyVip() {
+            // ВНИМАНИЕ: Напиши ниже юзернейм своего бота БЕЗ символа @ 
+            // (например: my_dorama_bot)
+            const botUsername = "doramattbot"; 
+            
+            // Эта ссылка закроет WebApp и запустит твою команду в PuzzleBot
+            tg.openTelegramLink(`https://t.me/${botUsername}?start=buyvip`);
+            tg.close();
         }
+
 
         async function loadDoramas() {
             await checkVipStatus();
